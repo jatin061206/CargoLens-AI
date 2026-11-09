@@ -115,11 +115,11 @@ app.post("/api/shipments/:id/approve",auth,manager,(req,res)=>{
   s.status="approved";s.approvedBy=req.user.email;s.approvedAt=new Date().toISOString();log(db,req.user,"shipment_approved",s.id);writeDB(db);res.json(s);
 });
 app.get("/api/shipments/:id/export",auth,(req,res)=>{
-  const s=readDB().shipments.find(x=>x.id===req.params.id);if(!s)return res.status(404).json({error:"Shipment not found."});
+  const db=readDB();const s=db.shipments.find(x=>x.id===req.params.id);if(!s)return res.status(404).json({error:"Shipment not found."});
   const issues=checks(s);if(issues.length||s.status!=="approved")return res.status(409).json({error:"Manager approval and zero unresolved checks are required before export.",checks:issues});
   const rows=[["shipmentId","supplier","origin","documentType","description","quantity","unitPrice","currency","grossWeightKg","total"],...s.documents.map(d=>[s.id,s.supplier,s.origin,d.type,d.fields.description||"",d.fields.quantity??"",d.fields.unitPrice??"",d.fields.currency||"",d.fields.grossWeightKg??"",d.fields.total??""])];
   const csv=rows.map(row=>row.map(v=>'"'+String(v).replaceAll('"','""')+'"').join(",")).join("\r\n");
-  log(readDB(),req.user,"csv_exported",s.id);res.setHeader("Content-Type","text/csv");res.setHeader("Content-Disposition",`attachment; filename="${s.id}.csv"`);res.send(csv);
+  log(db,req.user,"csv_exported",s.id);writeDB(db);res.setHeader("Content-Type","text/csv");res.setHeader("Content-Disposition",`attachment; filename="${s.id}.csv"`);res.send(csv);
 });
 app.get("/api/audit",auth,manager,(req,res)=>res.json(readDB().audit));
 app.get("/api/health",(req,res)=>res.json({ok:true,service:"CargoLens AI"}));
